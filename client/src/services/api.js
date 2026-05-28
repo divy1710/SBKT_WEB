@@ -130,4 +130,17 @@ export const reportsAPI = {
   }),
 };
 
+// ─── Uploads ───────────────────────────────────────────────────────────────────
+export const uploadAPI = {
+  uploadPurchaseBill: (formData) => api.post('/uploads/purchase-bill', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  uploadEmployeeDocument: (formData) => api.post('/uploads/employee-document', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deleteFile: (fileId) => api.delete(`/uploads/${fileId}`),
+  // File viewing uses the token, so we can fetch it as a blob
+  viewFile: (fileId) => api.get(`/uploads/view/${fileId}`, { responseType: 'blob' }),
+};
+
 export default api;

@@ -1,71 +1,78 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const { errorResponse } = require('../utils/response.utils');
 
-const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
+// Configure multer to use memory storage
+// This means the file will be stored in memory as a Buffer, which is perfect for streaming to Google Drive
+const storage = multer.memoryStorage();
 
-// Storage configuration
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    let uploadPath = path.join(__dirname, '../../uploads');
+// Define allowed mime types
+const allowedMimeTypes = [
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png'
+];
 
-    if (req.uploadCategory) {
-      uploadPath = path.join(uploadPath, req.uploadCategory);
-    }
-    ensureDir(uploadPath);
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-  },
-});
+// Define dangerous extensions to double check
+const dangerousExtensions = ['.exe', '.bat', '.sh', '.js', '.vbs', '.scr', '.zip'];
 
-// File filter
+/**
+ * File filter to validate mime types and extensions
+ */
 const fileFilter = (req, file, cb) => {
-  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
-  if (allowedMimes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only PDF, JPG, and PNG files are allowed'), false);
+  // Check mime type
+  if (!allowedMimeTypes.includes(file.mimetype)) {
+    return cb(new Error('Invalid file type. Only PDF, JPG, JPEG, and PNG are allowed.'), false);
   }
+
+  // Check file extension just to be safe
+  const ext = file.originalname.substring(file.originalname.lastIndexOf('.')).toLowerCase();
+  if (dangerousExtensions.includes(ext)) {
+    return cb(new Error('Dangerous file types are not allowed.'), false);
+  }
+
+  cb(null, true);
 };
 
-// Size limits
-const limits = {
-  fileSize: parseInt(process.env.MAX_FILE_SIZE_PDF) || 10 * 1024 * 1024, // 10MB
+/**
+ * Create multer upload middleware with dynamic size limits
+ * @param {Number} maxImageSize - Max size for images in bytes (default 5MB)
+ * @param {Number} maxPdfSize - Max size for PDFs in bytes (default 10MB)
+ */
+const createUploadMiddleware = (maxImageSize = 5 * 1024 * 1024, maxPdfSize = 10 * 1024 * 1024) => {
+  return multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+      // We set the absolute max to the larger of the two limits here,
+      // and we can perform more specific checks in the controller if needed.
+      fileSize: Math.max(maxImageSize, maxPdfSize) 
+    }
+  });
 };
 
-const upload = multer({ storage, fileFilter, limits });
+// Export pre-configured middlewares for convenience
+const uploadPurchaseBill = createUploadMiddleware(5 * 1024 * 1024, 10 * 1024 * 1024).single('file');
+const uploadEmployeeDocument = createUploadMiddleware(5 * 1024 * 1024, 10 * 1024 * 1024).single('file');
+const uploadSalarySlip = createUploadMiddleware(5 * 1024 * 1024, 10 * 1024 * 1024).single('file');
 
-// Middleware factory
-const uploadMiddleware = (fieldName, category) => {
-  return [
-    (req, res, next) => {
-      req.uploadCategory = category || 'general';
-      next();
-    },
-    (req, res, next) => {
-      upload.single(fieldName)(req, res, (err) => {
-        if (err instanceof multer.MulterError) {
-          if (err.code === 'LIMIT_FILE_SIZE') {
-            return errorResponse(res, 'File size exceeds limit', 400);
-          }
-          return errorResponse(res, err.message, 400);
-        }
-        if (err) {
-          return errorResponse(res, err.message, 400);
-        }
-        next();
-      });
-    },
-  ];
+/**
+ * Error handling middleware specifically for multer errors
+ */
+const handleUploadError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'File size exceeds the allowed limit.' });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  } else if (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  next();
 };
 
-module.exports = { uploadMiddleware };
+module.exports = {
+  uploadPurchaseBill,
+  uploadEmployeeDocument,
+  uploadSalarySlip,
+  handleUploadError
+};

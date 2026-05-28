@@ -166,9 +166,9 @@ model Purchase {
   transportDetails  String?
   paymentStatus     PaymentStatus @default(PENDING)
   paidAmount        Float         @default(0)
-  billUrl           String?
   billFileId        String?
-  billDriveUrl      String?
+  billFileUrl       String?
+  billFileName      String?
   notes             String?
   isVerified        Boolean       @default(false)
   createdAt         DateTime      @default(now())
@@ -235,6 +235,7 @@ model Employee {
   salaries       Salary[]
   advances       SalaryAdvance[]
   leaves         Leave[]
+  documents      EmployeeDocument[]
 
   @@map("employees")
 }
@@ -343,4 +344,17 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@map("audit_logs")
+}
+
+model EmployeeDocument {
+  id         String   @id @default(uuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  title      String?
+  fileId     String
+  fileUrl    String
+  mimeType   String
+  uploadedAt DateTime @default(now())
+
+  @@map("employee_documents")
 }
