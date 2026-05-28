@@ -24,6 +24,7 @@ const uploadRoutes = require('./routes/upload.routes');
 const app = express();
 
 // ─── Security Middleware ────────────────────────────────────────────────────
+app.set('trust proxy', 1); // Trust first proxy (Render, Vercel, Heroku, etc.)
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
