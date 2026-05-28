@@ -33,7 +33,7 @@ const getDashboardStats = async (req, res) => {
         _sum: { totalAmount: true },
         _count: true,
       }),
-      prisma.purchase.count({ where: { billUrl: null } }),
+      prisma.purchase.count({ where: { billFileUrl: null } }),
       prisma.supplier.count({ where: { isActive: true } }),
 
       // Employee stats

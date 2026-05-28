@@ -63,9 +63,6 @@ export const purchaseAPI = {
   create: (data) => api.post('/purchases', data),
   update: (id, data) => api.put(`/purchases/${id}`, data),
   delete: (id) => api.delete(`/purchases/${id}`),
-  uploadBill: (id, formData) => api.post(`/purchases/${id}/bill`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
 };
 
 // ─── Inventory ───────────────────────────────────────────────────────────────

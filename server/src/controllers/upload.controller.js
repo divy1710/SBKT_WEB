@@ -134,8 +134,12 @@ const deleteFile = async (req, res) => {
       });
     }
 
-    // Delete from Google Drive
-    await googleDriveService.deleteFile(fileId);
+    // Delete from Google Drive (wrap in try/catch to ignore if not found in Drive, e.g. legacy local files)
+    try {
+      await googleDriveService.deleteFile(fileId);
+    } catch (driveErr) {
+      console.warn('File not found in Google Drive, skipping drive deletion.');
+    }
 
     res.status(200).json({ message: 'File deleted successfully.' });
   } catch (error) {

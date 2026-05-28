@@ -2,9 +2,23 @@ const { google } = require('googleapis');
 const stream = require('stream');
 
 // Google Drive API setup
-// Normally credentials should be securely managed, for example from environment variables.
-// The private key must handle escaped newline characters correctly.
 const setupDriveClient = () => {
+  // Option 1: Use OAuth2 with a Refresh Token (Best for standard @gmail.com accounts)
+  if (process.env.GOOGLE_REFRESH_TOKEN) {
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI || 'https://developers.google.com/oauthplayground'
+    );
+    
+    oauth2Client.setCredentials({
+      refresh_token: process.env.GOOGLE_REFRESH_TOKEN
+    });
+
+    return google.drive({ version: 'v3', auth: oauth2Client });
+  }
+
+  // Option 2: Use Service Account (Requires Google Workspace Shared Drive or Billing attached GCP Project)
   const credentials = {
     client_email: process.env.GOOGLE_CLIENT_EMAIL,
     private_key: process.env.GOOGLE_PRIVATE_KEY
@@ -21,7 +35,7 @@ const setupDriveClient = () => {
 };
 
 const drive = setupDriveClient();
-const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_FOLDER_ID; // The 'Shree Brahmnikrupa Textile' folder
+const ROOT_FOLDER_ID = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID || process.env.GOOGLE_DRIVE_FOLDER_ID; // The 'Shree Brahmnikrupa Textile' folder
 
 /**
  * Find a folder by name inside a parent folder
@@ -32,6 +46,8 @@ const findFolder = async (folderName, parentId = ROOT_FOLDER_ID) => {
       q: `mimeType='application/vnd.google-apps.folder' and name='${folderName}' and '${parentId}' in parents and trashed=false`,
       fields: 'files(id, name)',
       spaces: 'drive',
+      includeItemsFromAllDrives: true,
+      supportsAllDrives: true,
     });
 
     if (response.data.files.length > 0) {
@@ -58,6 +74,7 @@ const createFolder = async (folderName, parentId = ROOT_FOLDER_ID) => {
     const response = await drive.files.create({
       resource: fileMetadata,
       fields: 'id',
+      supportsAllDrives: true,
     });
 
     return response.data.id;
@@ -104,6 +121,7 @@ const uploadFile = async (file, folderName) => {
       resource: fileMetadata,
       media: media,
       fields: 'id, name, webViewLink, webContentLink',
+      supportsAllDrives: true,
     });
 
     return {
@@ -127,6 +145,7 @@ const deleteFile = async (fileId) => {
   try {
     await drive.files.delete({
       fileId: fileId,
+      supportsAllDrives: true,
     });
     return true;
   } catch (error) {
@@ -145,11 +164,12 @@ const getSecureFileStream = async (fileId) => {
     const fileMetadata = await drive.files.get({
       fileId: fileId,
       fields: 'id, name, mimeType',
+      supportsAllDrives: true,
     });
 
     // Then, get the file content as a stream
     const response = await drive.files.get(
-      { fileId: fileId, alt: 'media' },
+      { fileId: fileId, alt: 'media', supportsAllDrives: true },
       { responseType: 'stream' }
     );
 

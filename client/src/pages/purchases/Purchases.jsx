@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { purchaseAPI, supplierAPI } from '../../services/api';
+import { purchaseAPI, supplierAPI, uploadAPI } from '../../services/api';
+import FileViewer from '../../components/common/FileViewer';
 import { Plus, Edit2, Trash2, Search, Upload, Eye, Loader2, Download, Filter, CheckCircle, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -85,8 +86,9 @@ const Purchases = () => {
     setUploadingBill(id);
     try {
       const fd = new FormData();
-      fd.append('bill', file);
-      await purchaseAPI.uploadBill(id, fd);
+      fd.append('file', file);
+      fd.append('purchaseId', id);
+      await uploadAPI.uploadPurchaseBill(fd);
       queryClient.invalidateQueries(['purchases']);
       toast.success('Bill uploaded!');
     } catch {
@@ -249,10 +251,14 @@ const Purchases = () => {
                       <span className={`badge text-[11px] px-2 py-0.5 ${paymentBadge[p.paymentStatus]}`}>{p.paymentStatus}</span>
                     </td>
                     <td>
-                      {p.billUrl ? (
-                        <a href={p.billUrl} target="_blank" rel="noreferrer" className="btn btn-secondary bg-slate-50 text-slate-600 text-[12px] py-1.5 px-3 rounded-lg hover:text-indigo-600 hover:bg-indigo-50 border-transparent transition-colors">
-                          <Eye size={14} className="mr-1" /> View Bill
-                        </a>
+                      {p.billFileId ? (
+                        <FileViewer 
+                          fileId={p.billFileId}
+                          fileName={p.billFileName}
+                          fileUrl={p.billFileUrl}
+                          onDelete={canManage}
+                          onFileDeleted={() => queryClient.invalidateQueries(['purchases'])}
+                        />
                       ) : canManage ? (
                         <label className="btn btn-secondary bg-slate-50 text-slate-500 text-[12px] py-1.5 px-3 rounded-lg border-dashed border-slate-300 hover:border-indigo-300 hover:text-indigo-600 cursor-pointer transition-all">
                           {uploadingBill === p.id ? <Loader2 size={14} className="animate-spin mr-1" /> : <Upload size={14} className="mr-1" />}
