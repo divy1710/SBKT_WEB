@@ -127,6 +127,11 @@ export const reportsAPI = {
   }),
 };
 
+// ─── GST ─────────────────────────────────────────────────────────────────────
+export const gstAPI = {
+  fetchDetails: (gstin) => api.get(`/gst/${gstin}`),
+};
+
 // ─── Uploads ───────────────────────────────────────────────────────────────────
 export const uploadAPI = {
   uploadPurchaseBill: (formData) => api.post('/uploads/purchase-bill', formData, {

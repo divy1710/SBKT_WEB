@@ -134,7 +134,11 @@ model Supplier {
   id           String    @id @default(uuid())
   supplierCode String    @unique
   name         String
-  gstNumber    String?
+  gstNumber    String?   @unique
+  gstStatus    String?
+  legalName    String?
+  state        String?
+  pincode      String?
   phone        String
   email        String?
   address      String

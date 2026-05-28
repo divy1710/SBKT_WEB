@@ -20,6 +20,7 @@ const advanceRoutes = require('./routes/advance.routes');
 const reportsRoutes = require('./routes/reports.routes');
 const dashboardRoutes = require('./routes/dashboard.routes');
 const uploadRoutes = require('./routes/upload.routes');
+const gstRoutes = require('./routes/gst.routes');
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/api/salary', salaryRoutes);
 app.use('/api/advances', advanceRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/gst', gstRoutes);
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
