@@ -1,0 +1,346 @@
+// Prisma Schema for Shree Brahmnikrupa Textile ERP
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  PURCHASE_MANAGER
+  HR_MANAGER
+  ACCOUNTANT
+  STORE_MANAGER
+}
+
+enum MaterialType {
+  YARN
+  BEAM
+  DYE_CHEMICAL
+  FABRIC
+  PACKING_MATERIAL
+  COTTON
+  POLYESTER
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum InventoryCategory {
+  YARN
+  BEAM
+  FABRIC
+  CHEMICALS
+  PACKING_MATERIALS
+}
+
+enum TransactionType {
+  INWARD
+  OUTWARD
+}
+
+enum EmployeeRole {
+  MASTER
+  RUNNING_MASTER
+  KARIGAR
+  HELPER
+  SAFAI_KAMDAR
+  BEAM_GETTER
+  ACCOUNTANT
+  STORE_MANAGER
+}
+
+enum SalaryType {
+  MONTHLY
+  DAILY_WAGE
+  PIECE_RATE
+  OVERTIME_BASED
+}
+
+enum Shift {
+  MORNING
+  EVENING
+  NIGHT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  HALF_DAY
+  LEAVE
+  OVERTIME
+}
+
+enum SalaryStatus {
+  GENERATED
+  APPROVED
+  PAID
+}
+
+enum LeaveType {
+  CASUAL
+  SICK
+  EARNED
+  UNPAID
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  LOW_STOCK
+  SALARY_REMINDER
+  BILL_VERIFICATION
+  GENERAL
+  ATTENDANCE_ALERT
+}
+
+// ─────────────────────────────────────────────
+// MODELS
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(PURCHASE_MANAGER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+model Supplier {
+  id           String    @id @default(uuid())
+  supplierCode String    @unique
+  name         String
+  gstNumber    String?
+  phone        String
+  email        String?
+  address      String
+  paymentTerms String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  purchases Purchase[]
+
+  @@map("suppliers")
+}
+
+model Purchase {
+  id                String        @id @default(uuid())
+  purchaseCode      String        @unique
+  date              DateTime
+  supplierId        String
+  supplier          Supplier      @relation(fields: [supplierId], references: [id])
+  invoiceNumber     String
+  materialType      MaterialType
+  quantity          Float
+  unit              String
+  rate              Float
+  gstPercent        Float         @default(0)
+  taxableAmount     Float
+  gstAmount         Float
+  totalAmount       Float
+  transportDetails  String?
+  paymentStatus     PaymentStatus @default(PENDING)
+  paidAmount        Float         @default(0)
+  billUrl           String?
+  billFileId        String?
+  billDriveUrl      String?
+  notes             String?
+  isVerified        Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  inventoryTransactions InventoryTransaction[]
+
+  @@map("purchases")
+}
+
+model Inventory {
+  id           String            @id @default(uuid())
+  materialName String
+  category     InventoryCategory
+  unit         String
+  currentStock Float             @default(0)
+  minStockLevel Float            @default(0)
+  maxStockLevel Float?
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  transactions InventoryTransaction[]
+
+  @@unique([materialName, category])
+  @@map("inventory")
+}
+
+model InventoryTransaction {
+  id          String          @id @default(uuid())
+  inventoryId String
+  inventory   Inventory       @relation(fields: [inventoryId], references: [id])
+  type        TransactionType
+  quantity    Float
+  date        DateTime        @default(now())
+  purchaseId  String?
+  purchase    Purchase?       @relation(fields: [purchaseId], references: [id])
+  reference   String?
+  notes       String?
+  createdAt   DateTime        @default(now())
+
+  @@map("inventory_transactions")
+}
+
+model Employee {
+  id           String       @id @default(uuid())
+  employeeCode String       @unique
+  fullName     String
+  mobile       String
+  address      String
+  aadharNumber String?      @unique
+  role         EmployeeRole
+  joiningDate  DateTime
+  salaryType   SalaryType
+  basicSalary  Float
+  shift        Shift        @default(MORNING)
+  photoUrl     String?
+  photoFileId  String?
+  status       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  attendance     Attendance[]
+  salaries       Salary[]
+  advances       SalaryAdvance[]
+  leaves         Leave[]
+
+  @@map("employees")
+}
+
+model Attendance {
+  id            String           @id @default(uuid())
+  employeeId    String
+  employee      Employee         @relation(fields: [employeeId], references: [id])
+  date          DateTime         @db.Date
+  shift         Shift
+  status        AttendanceStatus
+  overtimeHours Float            @default(0)
+  notes         String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([employeeId, date])
+  @@map("attendance")
+}
+
+model Salary {
+  id              String       @id @default(uuid())
+  employeeId      String
+  employee        Employee     @relation(fields: [employeeId], references: [id])
+  month           Int
+  year            Int
+  presentDays     Float        @default(0)
+  absentDays      Float        @default(0)
+  halfDays        Float        @default(0)
+  overtimeHours   Float        @default(0)
+  overtimeRate    Float        @default(0)
+  overtimeAmount  Float        @default(0)
+  bonus           Float        @default(0)
+  deductions      Float        @default(0)
+  advanceDeducted Float        @default(0)
+  grossSalary     Float
+  finalSalary     Float
+  status          SalaryStatus @default(GENERATED)
+  slipUrl         String?
+  slipFileId      String?
+  notes           String?
+  generatedAt     DateTime     @default(now())
+  paidAt          DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([employeeId, month, year])
+  @@map("salaries")
+}
+
+model SalaryAdvance {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  amount      Float
+  date        DateTime
+  reason      String?
+  isDeducted  Boolean  @default(false)
+  deductedIn  Int?     // month
+  deductedYear Int?    // year
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("salary_advances")
+}
+
+model Leave {
+  id         String      @id @default(uuid())
+  employeeId String
+  employee   Employee    @relation(fields: [employeeId], references: [id])
+  startDate  DateTime    @db.Date
+  endDate    DateTime    @db.Date
+  type       LeaveType
+  reason     String?
+  status     LeaveStatus @default(PENDING)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@map("leaves")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      NotificationType @default(GENERAL)
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  oldValues Json?
+  newValues Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@map("audit_logs")
+}
