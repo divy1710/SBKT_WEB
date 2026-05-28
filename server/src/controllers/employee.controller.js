@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const { successResponse, errorResponse, paginatedResponse } = require('../utils/response.utils');
 const { getPaginationParams } = require('../utils/pagination.utils');
+const googleDriveService = require('../services/googleDrive.service');
 
 const prisma = new PrismaClient();
 
@@ -90,7 +91,15 @@ const createEmployee = async (req, res) => {
       salaryType, basicSalary, shift,
     } = req.body;
     const employeeCode = await generateEmployeeCode();
-    const photoUrl = req.file ? `/uploads/employees/${req.file.filename}` : null;
+    
+    let photoUrl = null;
+    let photoFileId = null;
+
+    if (req.file) {
+      const driveFile = await googleDriveService.uploadFile(req.file, 'Employee Documents');
+      photoUrl = driveFile.fileUrl;
+      photoFileId = driveFile.fileId;
+    }
 
     const employee = await prisma.employee.create({
       data: {
@@ -105,7 +114,7 @@ const createEmployee = async (req, res) => {
         basicSalary: parseFloat(basicSalary),
         shift: shift || 'MORNING',
         photoUrl,
-        photoFileId: req.file?.filename || null,
+        photoFileId,
       },
     });
     return successResponse(res, employee, 'Employee created', 201);
@@ -131,8 +140,9 @@ const updateEmployee = async (req, res) => {
     };
 
     if (req.file) {
-      data.photoUrl = `/uploads/employees/${req.file.filename}`;
-      data.photoFileId = req.file.filename;
+      const driveFile = await googleDriveService.uploadFile(req.file, 'Employee Documents');
+      data.photoUrl = driveFile.fileUrl;
+      data.photoFileId = driveFile.fileId;
     }
 
     const employee = await prisma.employee.update({

@@ -2,15 +2,15 @@ const express = require('express');
 const router = express.Router();
 const uploadController = require('../controllers/upload.controller');
 const uploadMiddleware = require('../middleware/upload.middleware');
-const { protect, authorize } = require('../middleware/auth.middleware');
-
+const { authenticate } = require('../middleware/auth.middleware');
+const { authorize } = require('../middleware/role.middleware');
 // Note: Ensure your authentication middleware correctly verifies the JWT
 // and sets req.user
 
 // Upload Purchase Bill
 router.post(
   '/purchase-bill',
-  protect,
+  authenticate,
   authorize('ADMIN', 'PURCHASE_MANAGER', 'ACCOUNTANT'),
   uploadMiddleware.uploadPurchaseBill,
   uploadMiddleware.handleUploadError,
@@ -20,7 +20,7 @@ router.post(
 // Upload Employee Document
 router.post(
   '/employee-document',
-  protect,
+  authenticate,
   authorize('ADMIN', 'HR_MANAGER'),
   uploadMiddleware.uploadEmployeeDocument,
   uploadMiddleware.handleUploadError,
@@ -30,7 +30,7 @@ router.post(
 // Delete File
 router.delete(
   '/:fileId',
-  protect,
+  authenticate,
   authorize('ADMIN', 'PURCHASE_MANAGER', 'HR_MANAGER', 'ACCOUNTANT'),
   uploadController.deleteFile
 );
@@ -39,7 +39,7 @@ router.delete(
 // Only authenticated users can view files
 router.get(
   '/view/:fileId',
-  protect,
+  authenticate,
   uploadController.viewFile
 );
 

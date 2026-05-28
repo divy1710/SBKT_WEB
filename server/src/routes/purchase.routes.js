@@ -5,7 +5,6 @@ const ctrl = require('../controllers/purchase.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { authorize } = require('../middleware/role.middleware');
 const { validate } = require('../middleware/validate.middleware');
-const { uploadMiddleware } = require('../middleware/upload.middleware');
 const path = require('path');
 
 const canManage = ['ADMIN', 'PURCHASE_MANAGER'];
@@ -24,13 +23,5 @@ router.post('/', authenticate, authorize(...canManage), [
 ], ctrl.createPurchase);
 router.put('/:id', authenticate, authorize(...canManage), ctrl.updatePurchase);
 router.delete('/:id', authenticate, authorize('ADMIN'), ctrl.deletePurchase);
-
-// Bill upload
-router.post('/:id/bill',
-  authenticate,
-  authorize(...canManage),
-  ...uploadMiddleware('bill', 'purchases'),
-  ctrl.uploadBill
-);
 
 module.exports = router;
